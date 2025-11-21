@@ -10,7 +10,7 @@ const reviewOutputSchema = new mongoose.Schema(
     refactor_code: { type: String, default: '' },
     summary: { type: String, default: '' },
   },
-  { _id: false }
+  { _id: false, suppressReservedKeysWarning: true }
 );
 
 const reviewSchema = new mongoose.Schema(

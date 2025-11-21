@@ -23,8 +23,8 @@ const getClient = () => {
 };
 
 export const generateCodeReview = async (code, language) => {
-
-  const systemPrompt = `
+  try {
+    const systemPrompt = `
 You are an advanced AI Code Reviewer.
 Analyze the given code and return a thorough review.
 
@@ -49,38 +49,49 @@ Return a JSON object with the following shape:
 - "summary": short summary of the overall code quality
 `.trim();
 
-  const userContent = `Language: ${language}\n\nCode:\n${code}`;
+    const userContent = `Language: ${language}\n\nCode:\n${code}`;
 
-  const aiClient = getClient();
+    const aiClient = getClient();
 
-  const rawModel = process.env.AI_MODEL || 'llama-3.1-8b-instant';
-  const model = rawModel === 'llama3-8b-8192' ? 'llama-3.1-8b-instant' : rawModel;
+    const rawModel = process.env.AI_MODEL || 'llama3-8b-8192';
+    const model = rawModel;
 
-  const completion = await aiClient.chat.completions.create({
-    model,
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userContent },
-    ],
-    response_format: { type: 'json_object' },
-  });
+    console.log('Making AI API call with model:', model);
 
-  const messageContent = completion.choices[0]?.message?.content;
+    const completion = await aiClient.chat.completions.create({
+      model,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userContent },
+      ],
+      response_format: { type: 'json_object' },
+    });
 
-  let parsed;
-  try {
-    parsed = JSON.parse(messageContent);
+    const messageContent = completion.choices[0]?.message?.content;
+
+    if (!messageContent) {
+      throw new Error('AI API returned empty response');
+    }
+
+    let parsed;
+    try {
+      parsed = JSON.parse(messageContent);
+    } catch (error) {
+      console.error('Failed to parse AI response:', messageContent);
+      throw new Error('Failed to parse AI response as JSON');
+    }
+
+    return {
+      errors: parsed.errors || [],
+      improvements: parsed.improvements || [],
+      security_issues: parsed.security_issues || [],
+      clean_code: parsed.clean_code || [],
+      complexity: parsed.complexity || '',
+      refactor_code: parsed.refactor_code || '',
+      summary: parsed.summary || '',
+    };
   } catch (error) {
-    throw new Error('Failed to parse AI response as JSON');
+    console.error('Error in generateCodeReview:', error);
+    throw error;
   }
-
-  return {
-    errors: parsed.errors || [],
-    improvements: parsed.improvements || [],
-    security_issues: parsed.security_issues || [],
-    clean_code: parsed.clean_code || [],
-    complexity: parsed.complexity || '',
-    refactor_code: parsed.refactor_code || '',
-    summary: parsed.summary || '',
-  };
 };
