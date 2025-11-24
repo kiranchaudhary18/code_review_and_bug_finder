@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import axios from 'axios';
 import { useAuth } from './useAuth.js';
 
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://code-review-and-bug-finder-backend.onrender.com/api';
 
 export const useApi = () => {
   const { token } = useAuth() || {};
