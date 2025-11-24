@@ -1,4 +1,4 @@
-import OpenAI from 'openai';
+import OpenAI from "openai";
 
 let client;
 
@@ -6,16 +6,13 @@ const getClient = () => {
   const apiKey = process.env.AI_API_KEY;
 
   if (!apiKey) {
-    throw new Error('AI_API_KEY is not defined in environment variables');
+    throw new Error("AI_API_KEY is not defined in environment variables");
   }
 
   if (!client) {
     client = new OpenAI({
       apiKey,
-      // Groq provides an OpenAI-compatible API surface.
-      // If you are using a pure OpenAI key, you can remove baseURL
-      // or point it back to the default https://api.openai.com/v1.
-      baseURL: process.env.AI_BASE_URL || 'https://api.groq.com/openai/v1',
+      baseURL: process.env.AI_BASE_URL || "https://api.groq.com/openai/v1",
     });
   }
 
@@ -45,7 +42,7 @@ Return a JSON object with the following shape:
 - "security_issues": list of possible vulnerabilities or unsafe patterns
 - "clean_code": list of suggestions based on clean code principles
 - "complexity": brief time and space complexity analysis if the code is algorithmic
-- "refactor_code": a fully corrected and refactored version of the ENTIRE input code in the same language. This string must contain ONLY source code (no markdown, no JSON, no commentary) so the user can copy-paste it directly.
+- "refactor_code": a fully corrected and refactored version of the input code (NO markdown)
 - "summary": short summary of the overall code quality
 `.trim();
 
@@ -53,32 +50,50 @@ Return a JSON object with the following shape:
 
     const aiClient = getClient();
 
-    const rawModel = process.env.AI_MODEL || 'llama3-8b-8192';
-    const model = rawModel;
+    // ---------------------------
+    // FIX: Replace deprecated Groq model
+    // ---------------------------
+    const rawModel = process.env.AI_MODEL;
+    let model;
 
-    console.log('Making AI API call with model:', model);
+    // If user has set a model manually
+    if (rawModel) {
+      model = rawModel;
+    } else {
+      // Default recommended Groq model (NOT deprecated)
+      model = "llama3-8b"; // stable version
+    }
+
+    // Fallback if someone used old deprecated model name
+    if (model === "llama3-8b-8192") {
+      console.warn("⚠️ Deprecated model detected — switching to llama3-8b");
+      model = "llama3-8b";
+    }
+
+    console.log("🚀 Using AI model:", model);
 
     const completion = await aiClient.chat.completions.create({
       model,
       messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userContent },
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userContent },
       ],
-      response_format: { type: 'json_object' },
+      response_format: { type: "json_object" },
+      temperature: 0.2,
     });
 
     const messageContent = completion.choices[0]?.message?.content;
 
     if (!messageContent) {
-      throw new Error('AI API returned empty response');
+      throw new Error("AI API returned empty response");
     }
 
     let parsed;
     try {
       parsed = JSON.parse(messageContent);
-    } catch (error) {
-      console.error('Failed to parse AI response:', messageContent);
-      throw new Error('Failed to parse AI response as JSON');
+    } catch (err) {
+      console.error("❌ Failed to parse AI JSON:", messageContent);
+      throw new Error("Failed to parse AI response as JSON");
     }
 
     return {
@@ -86,12 +101,12 @@ Return a JSON object with the following shape:
       improvements: parsed.improvements || [],
       security_issues: parsed.security_issues || [],
       clean_code: parsed.clean_code || [],
-      complexity: parsed.complexity || '',
-      refactor_code: parsed.refactor_code || '',
-      summary: parsed.summary || '',
+      complexity: parsed.complexity || "",
+      refactor_code: parsed.refactor_code || "",
+      summary: parsed.summary || "",
     };
   } catch (error) {
-    console.error('Error in generateCodeReview:', error);
+    console.error("❌ Error in generateCodeReview:", error);
     throw error;
   }
 };
